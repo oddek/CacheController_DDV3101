@@ -32,13 +32,18 @@ use IEEE.STD_LOGIC_1164.ALL;
 --use UNISIM.VComponents.all;
 
 entity Cache is
-    Port ( index : in STD_LOGIC;
-           offset : in STD_LOGIC;
-           wData : in STD_LOGIC_VECTOR (7 downto 0);
-           dataBlock : in STD_LOGIC_VECTOR (7 downto 0);
-           refill : in STD_LOGIC;
-           update : in STD_LOGIC;
-           rData : out STD_LOGIC_VECTOR (7 downto 0));
+    Generic(    addressBits : Integer;
+                    dataBits : Integer; 
+                    offsetSize : Integer;
+                    indexSize : Integer); 
+                  
+        Port ( index : in STD_LOGIC_VECTOR(indexSize-1 downto 0);
+               offset : in STD_LOGIC_VECTOR(offsetSize-1 downto 0); 
+               wData : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
+               dataBlock : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
+               refill : in STD_LOGIC;
+               update : in STD_LOGIC;
+               rData : out STD_LOGIC_VECTOR (dataBits-1 downto 0));
 end Cache;
 
 architecture Behavioral of Cache is

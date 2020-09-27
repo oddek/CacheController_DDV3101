@@ -32,12 +32,20 @@ use IEEE.STD_LOGIC_1164.ALL;
 --use UNISIM.VComponents.all;
 
 entity CPU is
-    Port ( address : out STD_LOGIC_VECTOR (7 downto 0);
-           wData : out STD_LOGIC_VECTOR (7 downto 0);
-           rData : in STD_LOGIC_VECTOR (7 downto 0));
+    Generic(    addressBits : Integer := 8;
+                dataBits : Integer := 8); 
+    Port (  stall :     in STD_LOGIC;
+            rData :     in STD_LOGIC_VECTOR (dataBits-1 downto 0);
+            address :   out STD_LOGIC_VECTOR (addressBits-1 downto 0);
+            wData :     out STD_LOGIC_VECTOR (dataBits-1 downto 0);
+            read :      out STD_LOGIC;
+            write :     out STD_LOGIC;
+            flush :     out STD_LOGIC);
 end CPU;
 
 architecture Behavioral of CPU is
+
+
 
 begin
 
