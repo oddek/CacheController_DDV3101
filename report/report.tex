@@ -1,0 +1,114 @@
+%\UseRawInputEncoding
+\documentclass{article}
+\setcounter{secnumdepth}{0}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+%\usepackage[latin1]{inputenc}
+%\usepackage[english, norsk]{babel}
+\usepackage{filecontents}
+\usepackage{tcolorbox}
+\usepackage{url}
+\usepackage{etoolbox}
+\usepackage{framed}
+\usepackage{framed, color}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{float}
+\usepackage{gensymb}
+\usepackage{amsmath}
+
+\definecolor{Black}{rgb}{0.0, 0.0, 0.0}
+
+%Definer kode
+\usepackage{listings}
+\usepackage{color}
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+extendedchars = true,
+texcl=true,
+  language=C++,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
+
+\usepackage[colorlinks]{hyperref}
+\hypersetup{citecolor=Black}
+\hypersetup{linkcolor=Black}
+\hypersetup{urlcolor=Black}
+\usepackage{cleveref}
+
+
+\setlength{\parindent}{0em}
+\setlength{\parskip}{1em}
+%\renewcommand{\baselinestretch}{2.0}
+
+%\renewcommand\thesubsection{\alph{subsection}}
+
+\renewcommand{\figurename}{Figure}
+\begin{document}
+\author{Kent Odde}
+\title{Title}
+
+\maketitle
+\thispagestyle{empty}
+\begin{center}
+\includegraphics[width=\linewidth,height=0.2\textheight,keepaspectratio]{img/USN.png}
+\end{center}
+\newpage
+
+\tableofcontents
+
+\newpage
+
+\section{Abstract}
+
+%Innholdsfortegnelse
+\section{Introduction}
+
+%Oppgaven
+\section{Assignment}
+
+%Implementation
+\section{Implementation}
+
+%Konklusjon
+\section{Conclusion}
+
+\begin{figure}[H]
+ \centering
+  \includegraphics[width=300pt]{img/usn.png}
+ \caption{..}
+ \end{figure}
+
+
+
+
+%Vedlegg
+\section{Appendices}
+
+
+\newpage
+%Referanse
+%\section{Referanser}
+
+\nocite{*}
+\bibliographystyle{plain}
+\bibliography{ref}
+
+\addcontentsline{toc}{section}{References}
+
+\end{document}
