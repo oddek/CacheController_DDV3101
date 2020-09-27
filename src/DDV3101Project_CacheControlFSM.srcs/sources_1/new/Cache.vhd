@@ -37,7 +37,8 @@ entity Cache is
                     offsetSize : Integer;
                     indexSize : Integer); 
                   
-        Port ( index : in STD_LOGIC_VECTOR(indexSize-1 downto 0);
+        Port ( clk :       in STD_LOGIC;
+               index : in STD_LOGIC_VECTOR(indexSize-1 downto 0);
                offset : in STD_LOGIC_VECTOR(offsetSize-1 downto 0); 
                wData : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
                dataBlock : in STD_LOGIC_VECTOR (dataBits-1 downto 0);

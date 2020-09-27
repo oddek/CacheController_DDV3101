@@ -32,9 +32,10 @@ use IEEE.STD_LOGIC_1164.ALL;
 --use UNISIM.VComponents.all;
 
 entity CacheController is
-    Generic(tagSize :   Integer := 2;
-            indexSize : Integer := 3);
-    Port (  tag :       in STD_LOGIC_VECTOR (tagSize-1 downto 0);
+    Generic(tagSize :   Integer;
+            indexSize : Integer);
+    Port (  clk :       in STD_LOGIC;
+            tag :       in STD_LOGIC_VECTOR (tagSize-1 downto 0);
             index :     in STD_LOGIC_VECTOR (indexSize-1 downto 0);
             read :      in STD_LOGIC;
             write :     in STD_LOGIC;
@@ -50,7 +51,10 @@ end CacheController;
 architecture Behavioral of CacheController is
 
 type state_type is (idle, compareTag, Allocate, WriteBack);
+signal state : state_type := idle;
 begin
+
+
 
 
 end Behavioral;

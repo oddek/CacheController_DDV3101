@@ -33,9 +33,10 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 
 entity Memory is
-    Generic(    addressBits : Integer := 8;
-                dataBits : Integer := 8); 
-    Port ( addr : in STD_LOGIC_VECTOR (addressBits-1 downto 0);
+    Generic(    addressBits : Integer;
+                dataBits : Integer); 
+    Port ( clk :       in STD_LOGIC;
+           addr : in STD_LOGIC_VECTOR (addressBits-1 downto 0);
            wData : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
            write : in STD_LOGIC;
            read : in STD_LOGIC;
@@ -44,8 +45,8 @@ entity Memory is
 end Memory;
 
 architecture Behavioral of Memory is
-    type memory_type is array(0 to (2**addressBits)-1) of std_logic_vector(dataBits-1 downto 0);
-    signal RAM : memory_type := (others => (others => '0'));
+    --type memory_type is array(0 to (2**addressBits)-1) of std_logic_vector(dataBits-1 downto 0);
+    --signal RAM : memory_type := (others => (others => '0'));
 begin
 
 

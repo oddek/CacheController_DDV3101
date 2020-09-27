@@ -18,10 +18,12 @@
 -- 
 ----------------------------------------------------------------------------------
 
+library work;
+use work.DesignSpecs.all;
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
+use IEEE.Math_real.all;
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
 --use IEEE.NUMERIC_STD.ALL;
@@ -31,24 +33,38 @@ use IEEE.STD_LOGIC_1164.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
+
+
+
 entity TopBlock is
     Port (  clk :       in STD_LOGIC;
             stall :     out STD_LOGIC;
             rData :     out STD_LOGIC_VECTOR (7 downto 0);
-            addr :   in STD_LOGIC_VECTOR (7 downto 0);
+            addr :      in STD_LOGIC_VECTOR (AddressBits-1 downto 0);
             wData :     in STD_LOGIC_VECTOR (7 downto 0);
             read :      in STD_LOGIC;
             write :     in STD_LOGIC;
             flush :     in STD_LOGIC);
 end TopBlock;
 architecture Behavioral of TopBlock is
-
     --Constants
-    constant AddressBits : Integer := 8;
-    constant DataBits : Integer := 8;
-    constant tagSize : Integer := 2;
-    constant indexSize : Integer := 3;
-    constant offsetSize : Integer := 2;
+--    constant Byte : Integer := 8; --(2^3)
+--    constant Kibi : Integer := 1024; --(2^10)
+--    constant Word : Integer := 32; --(2^5)
+--    constant BlockSize : Integer := 4 * Word; --128 (2^7)
+--    constant CacheSizeBits : Integer := 16 * Kibi * Byte; --16KiB
+--    constant CacheBlockSize : Integer := CacheSizeBits / BlockSize; --1024 (2^10) 
+--    constant AddressBits : Integer := 32 * byte; --32 Bytes
+--    constant ValidBitSize : Integer := 1;
+--    constant DirtyBitSize : Integer := 1;
+--    constant N : Integer := Integer(log2(Real(CacheBlockSize))); --10
+--    constant M : Integer := Integer(log2(Real(BlockSize/Word))); -- 2
+    
+--    constant DataBits : Integer := 8;
+--    constant indexSize : Integer := N;
+--    constant tagSize : Integer := 32 - (n + m + 2); 
+    
+--    constant offsetSize : Integer := 2;
     --Internal Signals
     signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0);
     signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0);
@@ -64,9 +80,10 @@ architecture Behavioral of TopBlock is
     
     --Components
     Component Memory
-        Generic(    addressBits : Integer := 8;
-                    dataBits : Integer := 8); 
-        Port ( addr : in STD_LOGIC_VECTOR (addressBits-1 downto 0);
+        Generic(    addressBits : Integer := AddressBits;
+                    dataBits : Integer := DataBits); 
+        Port ( clk :       in STD_LOGIC;
+               addr : in STD_LOGIC_VECTOR (addressBits-1 downto 0);
                wData : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
                write : in STD_LOGIC;
                read : in STD_LOGIC;
@@ -80,7 +97,8 @@ architecture Behavioral of TopBlock is
                     offsetSize : Integer := offsetSize;
                     indexSize : Integer := indexSize); 
                   
-        Port ( index : in STD_LOGIC_VECTOR(indexSize-1 downto 0);
+        Port ( clk :       in STD_LOGIC;
+               index : in STD_LOGIC_VECTOR(indexSize-1 downto 0);
                offset : in STD_LOGIC_VECTOR(offsetSize-1 downto 0); 
                wData : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
                dataBlock : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
@@ -91,7 +109,8 @@ architecture Behavioral of TopBlock is
     Component CacheController
         Generic(    tagSize : Integer := tagSize;
                     indexSize : Integer := indexSize);
-        Port ( tag : in STD_LOGIC_VECTOR (tagSize-1 downto 0);
+        Port ( clk :       in STD_LOGIC;
+               tag : in STD_LOGIC_VECTOR (tagSize-1 downto 0);
                index : in STD_LOGIC_VECTOR (indexSize-1 downto 0);
                read : in STD_LOGIC;
                write : in STD_LOGIC;
@@ -116,14 +135,18 @@ architecture Behavioral of TopBlock is
 --                flush :     out STD_LOGIC);
 --    end Component CPU;
 begin
-    tag <= addr(7 downto 6);
+
+    --Disse må gjøres generelle
+    tag <= addr(255 downto 238);--AddressBits-1 downto AddressBits-1-tagSize);
+    offset <= addr(offsetSize-1 downto 0);
 
 --    CPUInst : CPU
 --    Generic Map(addressBits => AddressBits, dataBits => DataBits)
 --    Port Map(stall => TopBlock.Stall, rData => TopBlock.rData, address => TopBlock.address, wData => TopBlock.wData, read => TopBlock.read, write => TopBlock.write, flush => TopBlock.flush);
 
     CacheControllerInst : CacheController
-    Port Map(   tag => tag, 
+    Port Map(   clk => clk,
+                tag => tag, 
                 index => index, 
                 read => read, 
                 write => write, 
@@ -137,7 +160,8 @@ begin
 
     CacheInst : Cache
     Generic Map(addressBits => AddressBits, dataBits => DataBits, indexSize => indexSize, offsetSize => offsetSize)
-    Port Map(   index => index, 
+    Port Map(   clk => clk,
+                index => index, 
                 offset => offset, 
                 wData => wData, 
                 rData => rData, 
@@ -148,7 +172,8 @@ begin
     
     MemoryInst : Memory
     Generic Map(addressBits => AddressBits, dataBits => DataBits)
-    Port Map(   addr => addr, 
+    Port Map(   clk => clk,
+                addr => addr, 
                 wData => wData, 
                 read => cacheControl2MemRead, 
                 write => cacheControl2MemWrite, 
