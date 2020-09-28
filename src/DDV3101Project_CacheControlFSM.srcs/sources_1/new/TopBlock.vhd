@@ -38,13 +38,12 @@ use IEEE.Math_real.all;
 
 entity TopBlock is
     Port (  clk :       in STD_LOGIC;
-            stall :     out STD_LOGIC;
-            rData :     out STD_LOGIC_VECTOR (7 downto 0);
+            ready : out STD_LOGIC;
+            operation : in STD_LOGIC;
+            rData :     out STD_LOGIC_VECTOR (Word-1 downto 0);
             addr :      in STD_LOGIC_VECTOR (AddressBits-1 downto 0);
-            wData :     in STD_LOGIC_VECTOR (7 downto 0);
-            read :      in STD_LOGIC;
-            write :     in STD_LOGIC;
-            flush :     in STD_LOGIC);
+            wData :     in STD_LOGIC_VECTOR (Word-1 downto 0);
+            readOrWrite :      in STD_LOGIC);
 end TopBlock;
 architecture Behavioral of TopBlock is
     --Constants
@@ -66,62 +65,75 @@ architecture Behavioral of TopBlock is
     
 --    constant offsetSize : Integer := 2;
     --Internal Signals
-    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0);
-    signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0);
-    signal offset : STD_LOGIC_VECTOR(offsetSize-1 downto 0);
+--    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0);
+--    signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0);
+--    signal offset : STD_LOGIC_VECTOR(offsetSize-1 downto 0);
     
     --Output from cacheController
-    signal cacheControl2MemRead, cacheControl2MemWrite : STD_LOGIC;
-    signal cacheControl2CacheUpdate, cacheControl2CacheRefill : STD_LOGIC;
+    signal cache2MemReadOrWrite : STD_LOGIC;
+    signal cache2MemAddress : STD_LOGIC_VECTOR(addressBits-1 downto 0);
+    signal cache2MemData : STD_LOGIC_VECTOR(BlockSize -1 downto 0);
+    signal cache2MemOperation : STD_LOGIC;
     
     --Output from Memory
-    signal mem2CacheControlReady : STD_LOGIC;
-    signal mem2CacheDataBlock : STD_LOGIC_VECTOR(DataBits-1 downto 0);
+    signal mem2CacheReady : STD_LOGIC;
+    --Må være 128
+    signal mem2CacheData : STD_LOGIC_VECTOR(BlockSize-1 downto 0);
     
     --Components
     Component Memory
-        Generic(    addressBits : Integer := AddressBits;
-                    dataBits : Integer := DataBits); 
-        Port ( clk :       in STD_LOGIC;
-               addr : in STD_LOGIC_VECTOR (addressBits-1 downto 0);
-               wData : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
-               write : in STD_LOGIC;
-               read : in STD_LOGIC;
-               ready : out STD_LOGIC;
-               DataBlock : out STD_LOGIC_VECTOR (dataBits-1 downto 0));
+        Generic(    addressBits : Integer;
+                    BlockSize : Integer); 
+        Port ( readOrWrite :    in STD_LOGIC;
+               operation :      in STD_LOGIC;
+               addr :           in STD_LOGIC_VECTOR (addressBits-1 downto 0);
+               --Må være 128 bit:
+               dataFromCache :  in STD_LOGIC_VECTOR (BlockSize-1 downto 0);
+               dataToCache :    out STD_LOGIC_VECTOR (BlockSize-1 downto 0);
+               ready : out STD_LOGIC);
     end Component Memory;
     
     Component Cache
-        Generic(    addressBits : Integer := AddressBits;
-                    dataBits : Integer := DataBits; 
-                    offsetSize : Integer := offsetSize;
-                    indexSize : Integer := indexSize); 
+        Generic(    addressBits : Integer;
+                    BlockSize : Integer;
+                    WordSize : Integer;
+                    offsetSize : Integer;
+                    indexSize : Integer;
+                    tagSize : Integer); 
                   
-        Port ( clk :       in STD_LOGIC;
-               index : in STD_LOGIC_VECTOR(indexSize-1 downto 0);
-               offset : in STD_LOGIC_VECTOR(offsetSize-1 downto 0); 
-               wData : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
-               dataBlock : in STD_LOGIC_VECTOR (dataBits-1 downto 0);
-               refill : in STD_LOGIC;
-               update : in STD_LOGIC;
-               rData : out STD_LOGIC_VECTOR (dataBits-1 downto 0));
+        Port ( clk :                in STD_LOGIC;
+               readOrWriteFromCPU : in STD_LOGIC;
+               OperationFromCPU :   in STD_LOGIC;
+               addressFromCPU :     in STD_LOGIC_VECTOR(addressBits-1 downto 0);
+               --Skal være 32 bit
+               dataToCPU :          out STD_LOGIC_VECTOR (Word-1 downto 0);
+               dataFromCPU :        in STD_LOGIC_VECTOR (Word-1 downto 0);
+               readyToCPU :         out STD_LOGIC;
+               
+               --Disse må være 128 bit
+               dataFromMemory :     in STD_LOGIC_VECTOR(BlockSize-1 downto 0);
+               dataToMemory :       out STD_LOGIC_VECTOR(BlockSize-1 downto 0);
+               addressToMemory :    out STD_LOGIC_VECTOR(addressBits-1 downto 0);
+               operationToMemory :  out STD_LOGIC;
+               readOrWriteToMemory: out STD_LOGIC := '0';
+               readyFromMemory :    in STD_LOGIC);
     end Component Cache; 
-    Component CacheController
-        Generic(    tagSize : Integer := tagSize;
-                    indexSize : Integer := indexSize);
-        Port ( clk :       in STD_LOGIC;
-               tag : in STD_LOGIC_VECTOR (tagSize-1 downto 0);
-               index : in STD_LOGIC_VECTOR (indexSize-1 downto 0);
-               read : in STD_LOGIC;
-               write : in STD_LOGIC;
-               flush : in STD_LOGIC;
-               stall : out STD_LOGIC;
-               refill : out STD_LOGIC;
-               update : out STD_LOGIC;
-               memRead : out STD_LOGIC;
-               memWrite : out STD_LOGIC;
-               memReady : in STD_LOGIC);
-    end Component CacheController;   
+--    Component CacheController
+--        Generic(    tagSize : Integer := tagSize;
+--                    indexSize : Integer := indexSize);
+--        Port ( clk :       in STD_LOGIC;
+--               tag : in STD_LOGIC_VECTOR (tagSize-1 downto 0);
+--               index : in STD_LOGIC_VECTOR (indexSize-1 downto 0);
+--               read : in STD_LOGIC;
+--               write : in STD_LOGIC;
+--               flush : in STD_LOGIC;
+--               stall : out STD_LOGIC;
+--               refill : out STD_LOGIC;
+--               update : out STD_LOGIC;
+--               memRead : out STD_LOGIC;
+--               memWrite : out STD_LOGIC;
+--               memReady : in STD_LOGIC);
+--    end Component CacheController;   
     
 --    Component CPU
 --        Generic(    addressBits : Integer := 8;
@@ -136,49 +148,50 @@ architecture Behavioral of TopBlock is
 --    end Component CPU;
 begin
 
-    --Disse må gjøres generelle
-    tag <= addr(255 downto 238);--AddressBits-1 downto AddressBits-1-tagSize);
-    offset <= addr(offsetSize-1 downto 0);
 
 --    CPUInst : CPU
 --    Generic Map(addressBits => AddressBits, dataBits => DataBits)
 --    Port Map(stall => TopBlock.Stall, rData => TopBlock.rData, address => TopBlock.address, wData => TopBlock.wData, read => TopBlock.read, write => TopBlock.write, flush => TopBlock.flush);
 
-    CacheControllerInst : CacheController
-    Port Map(   clk => clk,
-                tag => tag, 
-                index => index, 
-                read => read, 
-                write => write, 
-                flush => flush, 
-                stall => stall, 
-                refill => cacheControl2CacheRefill,
-                update => cachecontrol2CacheUpdate,
-                memRead => cacheControl2MemRead,
-                memWrite => cacheControl2MemWrite,
-                memReady => Mem2CacheControlReady);
+--    CacheControllerInst : CacheController
+--    Port Map(   clk => clk,
+--                tag => tag, 
+--                index => index, 
+--                read => read, 
+--                write => write, 
+--                flush => flush, 
+--                stall => stall, 
+--                refill => cacheControl2CacheRefill,
+--                update => cachecontrol2CacheUpdate,
+--                memRead => cacheControl2MemRead,
+--                memWrite => cacheControl2MemWrite,
+--                memReady => Mem2CacheControlReady);
 
     CacheInst : Cache
-    Generic Map(addressBits => AddressBits, dataBits => DataBits, indexSize => indexSize, offsetSize => offsetSize)
+    Generic Map(addressBits => AddressBits, BlockSize => BlockSize, WordSize => Word, indexSize => indexSize, offsetSize => offsetSize, tagSize => tagSize)
     Port Map(   clk => clk,
-                index => index, 
-                offset => offset, 
-                wData => wData, 
-                rData => rData, 
-                refill => cacheControl2CacheRefill, 
-                update => cacheControl2CacheUpdate, 
-                DataBlock => mem2CacheDataBlock);
+                readOrWriteFromCPU => readOrWrite,
+                operationFromCPU => operation,
+                addressFromCPU => addr, 
+                dataToCPU => rData,
+                dataFromCPU => wData, 
+                readyToCPU => ready,
+                dataFromMemory => mem2CacheData,
+                dataToMemory => cache2MemData, 
+                addressToMemory => cache2MemAddress,
+                operationToMemory => cache2MemOperation,
+                readOrWriteToMemory => cache2MemReadOrWrite,
+                readyFromMemory => mem2CacheReady);
     
     
     MemoryInst : Memory
-    Generic Map(addressBits => AddressBits, dataBits => DataBits)
-    Port Map(   clk => clk,
-                addr => addr, 
-                wData => wData, 
-                read => cacheControl2MemRead, 
-                write => cacheControl2MemWrite, 
-                ready => Mem2CacheControlReady, 
-                DataBlock => Mem2CacheDataBlock);
+    Generic Map(addressBits => AddressBits, BlockSize => BlockSize)
+    Port Map(   readOrWrite => cache2MemReadOrWrite,
+                operation => cache2MemOperation,
+                addr => cache2MemAddress,
+                dataFromCache => cache2MemData,
+                dataToCache => mem2CacheData,
+                ready => mem2CacheReady);
 
 
 end Behavioral;

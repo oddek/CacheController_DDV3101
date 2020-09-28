@@ -38,7 +38,7 @@ package DesignSpecs is
     constant BlockSize : Integer := 4 * Word; --128 (2^7)
     constant CacheSizeBits : Integer := 16 * Kibi * Byte; --16KiB
     constant CacheBlockSize : Integer := CacheSizeBits / BlockSize; --1024 (2^10) 
-    constant AddressBits : Integer := 32 * byte; --32 Bytes
+    constant AddressBits : Integer := 32; --32 Bytes
     constant ValidBitSize : Integer := 1;
     constant DirtyBitSize : Integer := 1;
     constant N : Integer := Integer(log2(Real(CacheBlockSize))); --10
