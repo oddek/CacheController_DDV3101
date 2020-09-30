@@ -45,7 +45,8 @@ architecture Behavioral of TopBlock_tb is
     signal address0 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(1, 28)) & "0000";
     signal address1 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(2, 28)) & "0000";
     signal address2 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(5, 28)) & "0000";
-
+    signal address3 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(1025, 28)) & "0000";
+    signal address4 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(1026, 28)) & "0000";
 
     constant writeData1 : std_logic_vector(31 downto 0) := "00001111000011110000111100001111";
 
@@ -84,7 +85,7 @@ begin
         
         wait for clk_period*4;
         addr <= address0;
-
+        readOrWrite <= '0';
         operation <= '1';
         
         wait until ready = '1';
@@ -94,7 +95,7 @@ begin
     --Read from addr0: HIT
         wait for clk_period*4;
         addr <= address0;
-
+        readOrWrite <= '0';
         operation <= '1';
         
         wait until ready = '1';
@@ -126,7 +127,25 @@ begin
     --read from addr2: MISS
         wait for clk_period*4;
         addr <= address2;
-
+        readOrWrite <= '0';
+        operation <= '1';
+        
+        wait until ready = '1';
+        operation <= '0';
+        
+        --read from addr3: CLEAN MISS
+        wait for clk_period*4;
+        addr <= address3;
+        readOrWrite <= '0';
+        operation <= '1';
+        
+        wait until ready = '1';
+        operation <= '0';
+        
+        --read from addr4: DIRTY MISS
+        wait for clk_period*4;
+        addr <= address4;
+        readOrWrite <= '0';
         operation <= '1';
         
         wait until ready = '1';

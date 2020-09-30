@@ -47,7 +47,7 @@ end Memory;
 
 architecture Behavioral of Memory is
     --DAtabits må være 128 bit.
-    type memory_type is array(0 to 2**8-1) of std_logic_vector(127 downto 0);
+    type memory_type is array(0 to (2**15)-1) of std_logic_vector(127 downto 0);
     signal RAM : memory_type := (others => (others => '1'));
 begin
     

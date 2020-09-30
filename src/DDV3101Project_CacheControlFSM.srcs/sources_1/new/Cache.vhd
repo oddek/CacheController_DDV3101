@@ -242,6 +242,7 @@ begin
                 --Means we are going to writeBackNext;
                 elsif(state_next = WriteBack) then
                     addressToMemory <= tag_array(to_integer(unsigned(index)))(17 downto 0) & index & "0000";
+                    dataToMemory <= data_array(to_integer(unsigned(index)));
                     readOrWriteToMemory <= '1';
                     operationToMemory <= '1';
                     tag_array(to_integer(unsigned(index))) <= "10" & tag;
