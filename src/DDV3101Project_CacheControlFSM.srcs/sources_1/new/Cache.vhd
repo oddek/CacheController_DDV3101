@@ -77,9 +77,9 @@ architecture Behavioral of Cache is
     
     
     --Divide input address:
-    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0) := addressFromCPU(addressBits-1 downto addressBits-tagSize);
-    signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0) := addressFromCPU(addressBits-1-tagSize downto addressBits-tagSize - indexSize);
-    signal offset : STD_LOGIC_VECTOR(1 downto 0) := addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
+    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0);-- := addressFromCPU(addressBits-1 downto addressBits-tagSize);
+    signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0);-- := addressFromCPU(addressBits-1-tagSize downto addressBits-tagSize - indexSize);
+    signal offset : STD_LOGIC_VECTOR(1 downto 0);-- := addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
     
     type state_type is (Idle, CompareTag, Allocate, WriteBack);
     signal state : state_type := Idle;
@@ -91,7 +91,7 @@ architecture Behavioral of Cache is
 
     --Databits må plusses med andre ting kanskje??? I størrelse, validbit osv?? Eller kanskje det ligger i controller?
     type memory_type is array(0 to (indexSize-1)) of std_logic_vector(BlockSize-1 downto 0);
-    signal data_array : memory_type := (others => (others => '0'));
+    signal data_array : memory_type := (others => (others => '-'));
     
     signal current_data : std_logic_vector(BlockSize-1 downto 0);
 begin
@@ -115,7 +115,7 @@ begin
     end process;
     
     -- Next state Logic
-    process(state, index, tag_array, operationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory)
+    process(state, index, tag, tag_array, operationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory)
     begin
         case state is
             when Idle =>
@@ -130,8 +130,8 @@ begin
             when CompareTag =>
                 --If valid bit in index is equal to 1 (IE VALID) and TAG Matches:
                 --HIT!!!
-                if( tag_array(to_integer(unsigned(index)))(ValidBitIndex) = '1' and
-                    tag_array(to_integer(unsigned(index)))(tagSize-1 downto 0) = tag) then
+                if((tag_array(to_integer(unsigned(index)))(ValidBitIndex) = '1') and
+                    (tag_array(to_integer(unsigned(index)))(tagSize-1 downto 0) = tag)) then
                     
                     --If its a hit, it does not matter whether its a read or write, we are going back either way
                     state_next <= idle;
@@ -206,6 +206,9 @@ begin
                 else
                     --Tell memory that an operation is underway:
                     operationToMemory <= '1';
+                    if(readOrWriteFromCPU = '1') then
+                        tag_array(to_integer(unsigned(index))) <= "11" & tag;
+                    end if;
                     --Handle read or write stuff
                     
                 end if;

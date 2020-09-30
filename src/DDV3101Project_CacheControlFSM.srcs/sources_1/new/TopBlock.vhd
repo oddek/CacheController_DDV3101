@@ -18,8 +18,8 @@
 -- 
 ----------------------------------------------------------------------------------
 
-library work;
-use work.DesignSpecs.all;
+--library work;
+--use work.DesignSpecs.all;
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -40,28 +40,30 @@ entity TopBlock is
     Port (  clk :       in STD_LOGIC;
             ready : out STD_LOGIC;
             operation : in STD_LOGIC;
-            rData :     out STD_LOGIC_VECTOR (Word-1 downto 0);
-            addr :      in STD_LOGIC_VECTOR (AddressBits-1 downto 0);
-            wData :     in STD_LOGIC_VECTOR (Word-1 downto 0);
+            rData :     out STD_LOGIC_VECTOR (31 downto 0);--(Word-1 downto 0);
+            addr :      in STD_LOGIC_VECTOR (31 downto 0);--(AddressBits-1 downto 0);
+            wData :     in STD_LOGIC_VECTOR (31 downto 0);--(Word-1 downto 0);
             readOrWrite :      in STD_LOGIC);
 end TopBlock;
 architecture Behavioral of TopBlock is
     --Constants
---    constant Byte : Integer := 8; --(2^3)
---    constant Kibi : Integer := 1024; --(2^10)
---    constant Word : Integer := 32; --(2^5)
---    constant BlockSize : Integer := 4 * Word; --128 (2^7)
---    constant CacheSizeBits : Integer := 16 * Kibi * Byte; --16KiB
---    constant CacheBlockSize : Integer := CacheSizeBits / BlockSize; --1024 (2^10) 
---    constant AddressBits : Integer := 32 * byte; --32 Bytes
---    constant ValidBitSize : Integer := 1;
---    constant DirtyBitSize : Integer := 1;
---    constant N : Integer := Integer(log2(Real(CacheBlockSize))); --10
---    constant M : Integer := Integer(log2(Real(BlockSize/Word))); -- 2
+    constant Byte : Integer := 8; --(2^3)
+    constant Kibi : Integer := 1024; --(2^10)
+    constant Word : Integer := 32; --(2^5)
+    constant BlockSize : Integer := 4 * Word; --128 (2^7)
+    constant CacheSizeBits : Integer := 16 * Kibi * Byte; --16KiB
+    constant CacheBlockSize : Integer := CacheSizeBits / BlockSize; --1024 (2^10) 
+    constant AddressBits : Integer := 32; --32 Bytes
+    constant ValidBitSize : Integer := 1;
+    constant DirtyBitSize : Integer := 1;
+    constant N : Integer := Integer(log2(Real(CacheBlockSize))); --10
+    constant M : Integer := Integer(log2(Real(BlockSize/Word))); -- 2
     
---    constant DataBits : Integer := 8;
---    constant indexSize : Integer := N;
---    constant tagSize : Integer := 32 - (n + m + 2); 
+    constant DataBits : Integer := 8;
+    constant indexSize : Integer := N;
+    constant tagSize : Integer := 32 - (n + m + 2); 
+    
+    constant offsetSize : Integer := 2;
     
 --    constant offsetSize : Integer := 2;
     --Internal Signals
