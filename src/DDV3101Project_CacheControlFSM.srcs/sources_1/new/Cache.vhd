@@ -56,8 +56,6 @@ entity Cache is
                readyFromMemory :      in STD_LOGIC);
 end Cache;
 
-
-
 architecture Behavioral of Cache is
 
     Component FourToOneMux
@@ -67,7 +65,6 @@ architecture Behavioral of Cache is
            sel : in STD_LOGIC_VECTOR (1 downto 0);
            Y : out STD_LOGIC_VECTOR (WordSize-1 downto 0));
     end Component FourToOneMux;
-
 
     Component OneToFourDemux
         Port ( i0 : in STD_LOGIC_VECTOR (31 downto 0);
@@ -82,7 +79,6 @@ architecture Behavioral of Cache is
     constant ValidBitIndex : Integer := (tagSize - 1 + 2);
     constant DirtyBitIndex : Integer := tagSize - 1 + 1;
     
-    
     --Divide input address:
     signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0) := (others => '0');-- := addressFromCPU(addressBits-1 downto addressBits-tagSize);
     signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0) := (others => '0');-- := addressFromCPU(addressBits-1-tagSize downto addressBits-tagSize - indexSize);
@@ -92,24 +88,24 @@ architecture Behavioral of Cache is
     signal state : state_type := Idle;
     signal state_next : state_type := Idle;
     
-    --Array of std_logic_vectors with: VALID BIT, DIRTY BIT and the TAG (LSB);
+    --ARRAY OF TAGS 
+    --VALID BIT, DIRTY BIT and the TAG (LSB);
     type tag_array_type is array(0 to (2**index'length)-1 ) of std_logic_vector(ValidBitIndex downto 0);
     signal tag_array : tag_array_type := (others => (others => '0'));
 
-    --Databits må plusses med andre ting kanskje??? I størrelse, validbit osv?? Eller kanskje det ligger i controller?
+    --ARRAY OF DATA
     type memory_type is array(0 to 1023) of std_logic_vector(BlockSize-1 downto 0);
     signal data_array : memory_type := (others => (others => '0'));
     
     signal current_data : std_logic_vector(BlockSize-1 downto 0);
-    
-    signal current_index : Integer := 0;
 begin
-
+    --Update all necessary stuff
     tag <= addressFromCPU(31 downto 14);
     index <= addressFromCPU(13 downto 4);
     byteOffset <= addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
     current_data <= data_array(to_integer(unsigned(index)));
     
+    --Setup mux for writing a word from CPU to cache
     Mux : FourToOneMux
     Generic Map(BlockSize => BlockSize, WordSize => WordSize)
     Port Map(i0 => current_data, sel => byteOffset, Y => dataToCPU);
@@ -126,7 +122,6 @@ begin
     -- Next state Logic
     process(state, index, tag, tag_array, operationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory)
     begin
-        
         case state is
             when Idle =>
                 --Checks for an operation from CPU, if not stay in current state
@@ -151,6 +146,7 @@ begin
                     --If cache miss and old block is clean, goto allocate
                     if(tag_array(to_integer(unsigned(index)))(DirtyBitIndex) = '0') then
                         state_next <= Allocate;
+                        
                     --If dirty bit, we have to write back!!
                     else
                         state_next <= writeBack;
@@ -163,17 +159,17 @@ begin
                 if(readyFromMemory = '1') then
                     state_next <= CompareTag;
                     
-                --Memory not ready, stay in current state
+                --Memory not ready, keep waiting
                 else
                     state_next <= state;
                 end if;
                 
                 
             when WriteBack =>
-                --If memory ready, return to allocate
+                --If memory ready, goto to allocate
                 if(readyFromMemory = '1') then
                     state_next <= Allocate;
-                --If not ready, stay in current state
+                --If not ready, keep waiting
                 else
                     state_next <= state;
                 end if;
@@ -186,7 +182,7 @@ begin
     begin
         case state is
             when Idle =>
-            --Let cpu know we are idle, and let Memory know that there is no current operation.
+            --Let cpu know we are idle, and let memory know that there is no current operation.
                 if(state_next = CompareTag) then
                     readyToCPU <= '0';
                 else
@@ -195,11 +191,10 @@ begin
                 end if;
                 
             when CompareTag =>
-                --Tell the processor that we are ready if we are on our way back to idle.
                 if(state_next = idle) then
                     --Checking if we were writing
                     if(readOrWriteFromCPU = '1') then
-                        --Set Dirty Bit:
+                        --Set Dirty Bit, if we were writing
                         tag_array(to_integer(unsigned(index)))(DirtyBitIndex) <= '1'; 
                         --The book says that we also have to set the tag and valid bit, but this is due to some strange implementation i believe. In this solution I don't think this is necessary.
                         
@@ -216,60 +211,40 @@ begin
                                 data_array(to_integer(unsigned(index)))(31 downto 0) <= dataFromCPU;
                         end case;
                     end if;
+                    --Tell the processor that we are ready if we are on our way back to idle.
                     readyToCPU <= '1';
-                --If not, it means we are moving to either writeBack or Allocate:
-                elsif(state_next = Allocate) then
                     
-                    if(readOrWriteFromCPU = '1') then
-                        --tag_array(to_integer(unsigned(index))) <= "11" & tag;                        
-                    end if;
-                    --tag_array(to_integer(unsigned(index))) <= "10" & tag;                        
-
-                    --Handle read or write stuff
+                --If next state is allocate, we need to let the memory know what we need
+                elsif(state_next = Allocate) then
+                                          
                     addressToMemory <= addressFromCPU;
                     readOrWriteToMemory <= '0';
-                    
                     --Tell memory that an operation is underway:
                     operationToMemory <= '1';
                     
-                --Means we are going to writeBackNext;
+                --If next state is writeBack, we need to give the memory the stuff it needs
                 elsif(state_next = WriteBack) then
                     addressToMemory <= tag_array(to_integer(unsigned(index)))(17 downto 0) & index & "0000";
                     dataToMemory <= data_array(to_integer(unsigned(index)));
                     readOrWriteToMemory <= '1';
                     operationToMemory <= '1';
-                    --tag_array(to_integer(unsigned(index))) <= "10" & tag;
+                    --We also have to set the dirtybit to 0, so that we can write to the cache location after the writeback and allocation
                     tag_array(to_integer(unsigned(index)))(DirtyBitIndex) <= '0';
                 else
+                    --Should never get here, but for some reason, sometimes we do.
                     null;
                 end if;
                     
-                    
-                
-                --If not return stall = '1', do stuff?
             when Allocate =>
                 if(readyFromMemory = '1') then
+                    --When the memory has put the necessary data on the bus, we can read it, and store it in cache.
                     tag_array(to_integer(unsigned(index))) <= '1' & '0' & tag;
                     data_array(to_integer(unsigned(index))) <= dataFromMemory;
                 end if;
                 
+            --Nothing to be outputed in this state. 
             when WriteBack =>
-                --if(readyFromMemory = '1'
-                    
-                --Stall = 1?
-            
+                null;
         end case;
    end process;
-            
-
-
-
-
-
-
-
-
-
-
-
 end Behavioral;

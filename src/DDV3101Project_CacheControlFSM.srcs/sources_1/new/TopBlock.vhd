@@ -1,12 +1,12 @@
 ----------------------------------------------------------------------------------
--- Company: 
--- Engineer: 
+-- Company: USN Kongsberg, Norway
+-- Engineer: Kent Odde
 -- 
 -- Create Date: 09/27/2020 02:42:37 PM
--- Design Name: 
+-- Design Name: CacheController Project DDV3101
 -- Module Name: TopBlock - Behavioral
--- Project Name: 
--- Target Devices: 
+-- Project Name: CacheController Project DDV3101
+-- Target Devices: None
 -- Tool Versions: 
 -- Description: 
 -- 
@@ -71,7 +71,6 @@ architecture Behavioral of TopBlock is
     
     --Output from Memory
     signal mem2CacheReady : STD_LOGIC := '0';
-    --Må være 128
     signal mem2CacheData : STD_LOGIC_VECTOR(BlockSize-1 downto 0) := (others => '0');
     
     --Components
@@ -100,12 +99,10 @@ architecture Behavioral of TopBlock is
                readOrWriteFromCPU : in STD_LOGIC;
                OperationFromCPU :   in STD_LOGIC;
                addressFromCPU :     in STD_LOGIC_VECTOR(addressBits-1 downto 0);
-               --Skal være 32 bit
                dataToCPU :          out STD_LOGIC_VECTOR (Word-1 downto 0);
                dataFromCPU :        in STD_LOGIC_VECTOR (Word-1 downto 0);
                readyToCPU :         out STD_LOGIC;
                
-               --Disse må være 128 bit
                dataFromMemory :     in STD_LOGIC_VECTOR(BlockSize-1 downto 0);
                dataToMemory :       out STD_LOGIC_VECTOR(BlockSize-1 downto 0);
                addressToMemory :    out STD_LOGIC_VECTOR(addressBits-1 downto 0);
@@ -132,7 +129,6 @@ begin
                 readOrWriteToMemory => cache2MemReadOrWrite,
                 readyFromMemory => mem2CacheReady);
     
-    
     MemoryInst : Memory
     Generic Map(addressBits => AddressBits, BlockSize => BlockSize)
     Port Map(   clk => clk,
@@ -142,6 +138,5 @@ begin
                 dataFromCache => cache2MemData,
                 dataToCache => mem2CacheData,
                 ready => mem2CacheReady);
-
-
+                
 end Behavioral;

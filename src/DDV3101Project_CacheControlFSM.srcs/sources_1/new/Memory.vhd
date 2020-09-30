@@ -46,7 +46,10 @@ entity Memory is
 end Memory;
 
 architecture Behavioral of Memory is
-    --DAtabits må være 128 bit.
+    --Vivado won't let me have arrays of the intended size (2**32)-1.
+    --This smaller array lets me at least use addresses of the first and second "modulodegree", so I have been able to test the cache. 
+    --A better solution is needed here. 
+    --I'm also a bit confused about the need for 4 offsetbits in this scheme, as the lower two will be useless???
     type memory_type is array(0 to (2**15)-1) of std_logic_vector(127 downto 0);
     signal RAM : memory_type := (others => (others => '1'));
 begin
