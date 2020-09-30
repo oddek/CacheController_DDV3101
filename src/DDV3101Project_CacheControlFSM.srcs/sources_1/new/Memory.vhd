@@ -53,21 +53,18 @@ begin
     
     process(clk, operation, readOrWrite, addr)
     begin
-
+    
+        
         if(operation = '1') then
             ready <= '0';
             case readOrWrite is
                 when '0' => 
-                    dataToCache <= RAM(to_integer(unsigned(addr)));
+                    dataToCache <= RAM(to_integer(unsigned(addr(31 downto 4))));
                 when others =>
-                    RAM(to_integer(unsigned(addr))) <= dataFromCache;
+                    RAM(to_integer(unsigned(addr(31 downto 4)))) <= dataFromCache;
+
             end case;
-            
-            ready <= '1';
-        else
-            ready <= '1';
         end if;
-    end process;
-    
-    
+        ready <= '1';
+    end process; 
 end Behavioral;

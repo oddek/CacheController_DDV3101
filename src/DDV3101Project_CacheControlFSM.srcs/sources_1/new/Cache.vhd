@@ -86,7 +86,7 @@ architecture Behavioral of Cache is
     --Divide input address:
     signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0) := (others => '0');-- := addressFromCPU(addressBits-1 downto addressBits-tagSize);
     signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0) := (others => '0');-- := addressFromCPU(addressBits-1-tagSize downto addressBits-tagSize - indexSize);
-    signal offset : STD_LOGIC_VECTOR(1 downto 0) := (others => '0');-- := addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
+    signal byteOffset : STD_LOGIC_VECTOR(1 downto 0) := (others => '0');-- := addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
     
     type state_type is (Idle, CompareTag, Allocate, WriteBack);
     signal state : state_type := Idle;
@@ -101,34 +101,22 @@ architecture Behavioral of Cache is
     signal data_array : memory_type := (others => (others => '0'));
     
     signal current_data : std_logic_vector(BlockSize-1 downto 0);
-    signal current_tag : std_logic_vector(ValidBitIndex downto 0);
     
     signal current_index : Integer := 0;
 begin
 
     tag <= addressFromCPU(31 downto 14);
-
-    --tag <= addressFromCPU(addressFromCPU'Length-1 downto (addressFromCPU'Length - tagSize));
     index <= addressFromCPU(13 downto 4);
-    offset <= addressFromCPU(offsetSize-1 downto 2); --Maybe make this 2 generic, and add byte offset support?
-    --current_index <= to_integer(unsigned(index));
-
+    byteOffset <= addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
     current_data <= data_array(to_integer(unsigned(index)));
-    current_tag <= tag_array(to_integer(unsigned(index)));
-    
-    
     
     Mux : FourToOneMux
     Generic Map(BlockSize => BlockSize, WordSize => WordSize)
-    Port Map(i0 => current_data, sel => offset, Y => dataToCPU);
+    Port Map(i0 => current_data, sel => byteOffset, Y => dataToCPU);
     
---    Demux : OneToFourDemux
---    Port map(   i0 => dataFromCPU, sel => offset, 
---                Y0 => data_array(to_integer(unsigned(index)))(127 downto 96), Y1 => current_data(95 downto 64),
---                Y2 => current_data(63 downto 32), Y3 => current_data(31 downto 0)); 
 
     --State register part
-    process(clk)
+    process(clk, addressFromCPU)
     begin
         if(rising_edge(clk)) then
             state <= state_next;
@@ -138,6 +126,7 @@ begin
     -- Next state Logic
     process(state, index, tag, tag_array, operationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory)
     begin
+        
         case state is
             when Idle =>
                 --Checks for an operation from CPU, if not stay in current state
@@ -151,8 +140,8 @@ begin
             when CompareTag =>
                 --If valid bit in index is equal to 1 (IE VALID) and TAG Matches:
                 --HIT!!!
-                if(current_tag(ValidBitIndex) = '1') and
-                    (current_tag(tagSize-1 downto 0) = tag) then
+                if(tag_array(to_integer(unsigned(index)))(ValidBitIndex) = '1') and
+                    (tag_array(to_integer(unsigned(index)))(tagSize-1 downto 0) = tag) then
                     
                     --If its a hit, it does not matter whether its a read or write, we are going back either way
                     state_next <= idle;
@@ -160,7 +149,7 @@ begin
                 --MISS
                 else                        
                     --If cache miss and old block is clean, goto allocate
-                    if(current_tag(DirtyBitIndex) = '0') then
+                    if(tag_array(to_integer(unsigned(index)))(DirtyBitIndex) = '0') then
                         state_next <= Allocate;
                     --If dirty bit, we have to write back!!
                     else
@@ -173,7 +162,7 @@ begin
                 --If Memory ready, return to compare tag
                 if(readyFromMemory = '1') then
                     state_next <= CompareTag;
-                
+                    
                 --Memory not ready, stay in current state
                 else
                     state_next <= state;
@@ -216,7 +205,7 @@ begin
                         
                         --Write the data from CPU into cache
                         --Should really be generalized or put into a separate function or component
-                        case offset is
+                        case byteOffset is
                             when "00" =>
                                 data_array(to_integer(unsigned(index)))(127 downto 96) <= dataFromCPU;
                             when "01" =>
@@ -230,14 +219,18 @@ begin
                     readyToCPU <= '1';
                 --If not, it means we are moving to either writeBack or Allocate:
                 elsif(state_next = Allocate) then
-                    --Tell memory that an operation is underway:
-                    operationToMemory <= '1';
+                    
                     if(readOrWriteFromCPU = '1') then
-                        tag_array(to_integer(unsigned(index))) <= "11" & tag;                        
+                        --tag_array(to_integer(unsigned(index))) <= "11" & tag;                        
                     end if;
+                    --tag_array(to_integer(unsigned(index))) <= "10" & tag;                        
+
                     --Handle read or write stuff
                     addressToMemory <= addressFromCPU;
                     readOrWriteToMemory <= '0';
+                    
+                    --Tell memory that an operation is underway:
+                    operationToMemory <= '1';
                     
                 --Means we are going to writeBackNext;
                 elsif(state_next = WriteBack) then
@@ -245,7 +238,8 @@ begin
                     dataToMemory <= data_array(to_integer(unsigned(index)));
                     readOrWriteToMemory <= '1';
                     operationToMemory <= '1';
-                    tag_array(to_integer(unsigned(index))) <= "10" & tag;
+                    --tag_array(to_integer(unsigned(index))) <= "10" & tag;
+                    tag_array(to_integer(unsigned(index)))(DirtyBitIndex) <= '0';
                 else
                     null;
                 end if;
