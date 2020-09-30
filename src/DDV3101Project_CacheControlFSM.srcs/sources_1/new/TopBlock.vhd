@@ -37,12 +37,12 @@ use IEEE.Math_real.all;
 
 
 entity TopBlock is
-    Port (  clk :       in STD_LOGIC;
-            ready : out STD_LOGIC;
-            operation : in STD_LOGIC;
-            rData :     out STD_LOGIC_VECTOR (31 downto 0);--(Word-1 downto 0);
-            addr :      in STD_LOGIC_VECTOR (31 downto 0);--(AddressBits-1 downto 0);
-            wData :     in STD_LOGIC_VECTOR (31 downto 0);--(Word-1 downto 0);
+    Port (  clk :       in STD_LOGIC := '1';
+            ready : out STD_LOGIC := '1';
+            operation : in STD_LOGIC := '0';
+            rData :     out STD_LOGIC_VECTOR (31 downto 0) := (others => '0');--(Word-1 downto 0);
+            addr :      in STD_LOGIC_VECTOR (31 downto 0):= (others => '0');--(AddressBits-1 downto 0);
+            wData :     in STD_LOGIC_VECTOR (31 downto 0):= (others => '0');--(Word-1 downto 0);
             readOrWrite :      in STD_LOGIC);
 end TopBlock;
 architecture Behavioral of TopBlock is
@@ -61,7 +61,7 @@ architecture Behavioral of TopBlock is
     
     constant DataBits : Integer := 8;
     constant indexSize : Integer := N;
-    constant tagSize : Integer := 32 - (n + m + 2); 
+    constant tagSize : Integer := 32 - (n + m + 2);  --
     
     constant offsetSize : Integer := 2;
     
@@ -86,7 +86,8 @@ architecture Behavioral of TopBlock is
     Component Memory
         Generic(    addressBits : Integer;
                     BlockSize : Integer); 
-        Port ( readOrWrite :    in STD_LOGIC;
+        Port ( clk :            in STD_LOGIC;
+               readOrWrite :    in STD_LOGIC;
                operation :      in STD_LOGIC;
                addr :           in STD_LOGIC_VECTOR (addressBits-1 downto 0);
                --Må være 128 bit:
@@ -188,7 +189,8 @@ begin
     
     MemoryInst : Memory
     Generic Map(addressBits => AddressBits, BlockSize => BlockSize)
-    Port Map(   readOrWrite => cache2MemReadOrWrite,
+    Port Map(   clk => clk,
+                readOrWrite => cache2MemReadOrWrite,
                 operation => cache2MemOperation,
                 addr => cache2MemAddress,
                 dataFromCache => cache2MemData,

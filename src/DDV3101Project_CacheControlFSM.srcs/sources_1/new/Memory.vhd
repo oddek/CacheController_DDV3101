@@ -24,7 +24,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 -- Uncomment the following library declaration if instantiating
 -- any Xilinx leaf cells in this code.
@@ -35,7 +35,8 @@ use IEEE.STD_LOGIC_1164.ALL;
 entity Memory is
     Generic(    addressBits : Integer;
                 BlockSize : Integer); 
-    Port ( readOrWrite :    in STD_LOGIC;
+    Port ( clk :            in STD_LOGIC;
+           readOrWrite :    in STD_LOGIC;
            operation :      in STD_LOGIC;
            addr :           in STD_LOGIC_VECTOR (addressBits-1 downto 0);
            --Må være 128 bit:
@@ -50,7 +51,23 @@ architecture Behavioral of Memory is
     signal RAM : memory_type := (others => (others => '0'));
 begin
     
-    
+    process(clk, operation, readOrWrite, addr)
+    begin
+        if rising_edge(clk) then
+            if(operation = '1') then
+                case readOrWrite is
+                    when '0' => 
+                        dataToCache <= RAM(to_integer(unsigned(addr)));
+                    when '1' =>
+                        RAM(to_integer(unsigned(addr))) <= dataFromCache;
+                end case;
+                
+                ready <= '1';
+            else
+                ready <= '0';
+            end if;
+        end if;
+    end process;
     
     
 end Behavioral;

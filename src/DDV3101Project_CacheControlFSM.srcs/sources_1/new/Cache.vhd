@@ -43,7 +43,6 @@ entity Cache is
                readOrWriteFromCPU : in STD_LOGIC;
                OperationFromCPU :   in STD_LOGIC;
                addressFromCPU :     in STD_LOGIC_VECTOR(addressBits-1 downto 0);
-               --Skal være 32 bit
                dataToCPU :          out STD_LOGIC_VECTOR (WordSize-1 downto 0);
                dataFromCPU :        in STD_LOGIC_VECTOR (WordSize-1 downto 0);
                readyToCPU :         out STD_LOGIC;
@@ -72,7 +71,7 @@ architecture Behavioral of Cache is
 
 
 
-    constant ValidBitIndex : Integer := tagSize - 1 + 2;
+    constant ValidBitIndex : Integer := (tagSize - 1 + 2);
     constant DirtyBitIndex : Integer := tagSize - 1 + 1;
     
     
@@ -86,18 +85,18 @@ architecture Behavioral of Cache is
     signal state_next : state_type;
     
     --Array of std_logic_vectors with: VALID BIT, DIRTY BIT and the TAG (LSB);
-    type tag_array_type is array((2**indexSize)-1 to 0) of std_logic_vector(ValidBitIndex downto 0);
+    type tag_array_type is array(0 to (2**indexSize)-1 ) of std_logic_vector(ValidBitIndex downto 0);
     signal tag_array : tag_array_type := (others => (others => '1'));
 
     --Databits må plusses med andre ting kanskje??? I størrelse, validbit osv?? Eller kanskje det ligger i controller?
     type memory_type is array(0 to (indexSize-1)) of std_logic_vector(BlockSize-1 downto 0);
-    signal data_array : memory_type := (others => (others => '-'));
+    signal data_array : memory_type := (others => (others => '0'));
     
     signal current_data : std_logic_vector(BlockSize-1 downto 0);
 begin
 
-    tag <= addressFromCPU(addressBits-1 downto addressBits-tagSize);
-    index <= addressFromCPU(addressBits-1-tagSize downto addressBits-tagSize - indexSize);
+    tag <= addressFromCPU(addressBits-1 downto (addressBits-tagSize));
+    index <= addressFromCPU((addressBits-1-tagSize) downto (addressBits-tagSize - indexSize));
     offset <= addressFromCPU(offsetSize-1 downto 2); --Maybe make this 2 generic, and add byte offset support?
 
     current_data <= data_array(to_integer(unsigned(index)));
@@ -172,7 +171,7 @@ begin
     
     
     --Output logic;
-    process(state, OperationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory) is
+    process(state, state_next, OperationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory) is
     begin
         case state is
             when Idle =>
