@@ -38,34 +38,34 @@ entity Memory is
     Port ( clk :            in STD_LOGIC;
            readOrWrite :    in STD_LOGIC;
            operation :      in STD_LOGIC;
-           addr :           in STD_LOGIC_VECTOR (addressBits-1 downto 0);
+           addr :           in STD_LOGIC_VECTOR (31 downto 0);
            --Må være 128 bit:
-           dataFromCache :  in STD_LOGIC_VECTOR (BlockSize-1 downto 0);
-           dataToCache :    out STD_LOGIC_VECTOR (BlockSize-1 downto 0);
+           dataFromCache :  in STD_LOGIC_VECTOR (127 downto 0);
+           dataToCache :    out STD_LOGIC_VECTOR (127 downto 0);
            ready : out STD_LOGIC);
 end Memory;
 
 architecture Behavioral of Memory is
     --DAtabits må være 128 bit.
-    type memory_type is array(0 to (2**addressBits)-1) of std_logic_vector(BlockSize-1 downto 0);
-    signal RAM : memory_type := (others => (others => '0'));
+    type memory_type is array(0 to 2**8-1) of std_logic_vector(127 downto 0);
+    signal RAM : memory_type := (others => (others => '1'));
 begin
     
     process(clk, operation, readOrWrite, addr)
     begin
-        if rising_edge(clk) then
-            if(operation = '1') then
-                case readOrWrite is
-                    when '0' => 
-                        dataToCache <= RAM(to_integer(unsigned(addr)));
-                    when '1' =>
-                        RAM(to_integer(unsigned(addr))) <= dataFromCache;
-                end case;
-                
-                ready <= '1';
-            else
-                ready <= '0';
-            end if;
+
+        if(operation = '1') then
+            ready <= '0';
+            case readOrWrite is
+                when '0' => 
+                    dataToCache <= RAM(to_integer(unsigned(addr)));
+                when others =>
+                    RAM(to_integer(unsigned(addr))) <= dataFromCache;
+            end case;
+            
+            ready <= '1';
+        else
+            ready <= '1';
         end if;
     end process;
     

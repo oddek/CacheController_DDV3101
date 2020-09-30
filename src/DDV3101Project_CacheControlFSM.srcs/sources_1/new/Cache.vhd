@@ -69,6 +69,14 @@ architecture Behavioral of Cache is
     end Component FourToOneMux;
 
 
+    Component OneToFourDemux
+        Port ( i0 : in STD_LOGIC_VECTOR (31 downto 0);
+           sel : in STD_LOGIC_VECTOR (1 downto 0);
+           Y0 : out STD_LOGIC_VECTOR (31 downto 0);
+           Y1 : out STD_LOGIC_VECTOR (31 downto 0);
+           Y2 : out STD_LOGIC_VECTOR (31 downto 0);
+           Y3 : out STD_LOGIC_VECTOR (31 downto 0));
+    end Component OneToFourDemux;
 
 
     constant ValidBitIndex : Integer := (tagSize - 1 + 2);
@@ -76,34 +84,48 @@ architecture Behavioral of Cache is
     
     
     --Divide input address:
-    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0);-- := addressFromCPU(addressBits-1 downto addressBits-tagSize);
-    signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0);-- := addressFromCPU(addressBits-1-tagSize downto addressBits-tagSize - indexSize);
-    signal offset : STD_LOGIC_VECTOR(1 downto 0);-- := addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
+    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0) := (others => '0');-- := addressFromCPU(addressBits-1 downto addressBits-tagSize);
+    signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0) := (others => '0');-- := addressFromCPU(addressBits-1-tagSize downto addressBits-tagSize - indexSize);
+    signal offset : STD_LOGIC_VECTOR(1 downto 0) := (others => '0');-- := addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
     
     type state_type is (Idle, CompareTag, Allocate, WriteBack);
     signal state : state_type := Idle;
-    signal state_next : state_type;
+    signal state_next : state_type := Idle;
     
     --Array of std_logic_vectors with: VALID BIT, DIRTY BIT and the TAG (LSB);
-    type tag_array_type is array(0 to (2**indexSize)-1 ) of std_logic_vector(ValidBitIndex downto 0);
-    signal tag_array : tag_array_type := (others => (others => '1'));
+    type tag_array_type is array(0 to (2**index'length)-1 ) of std_logic_vector(ValidBitIndex downto 0);
+    signal tag_array : tag_array_type := (others => (others => '0'));
 
     --Databits må plusses med andre ting kanskje??? I størrelse, validbit osv?? Eller kanskje det ligger i controller?
-    type memory_type is array(0 to (indexSize-1)) of std_logic_vector(BlockSize-1 downto 0);
+    type memory_type is array(0 to 1023) of std_logic_vector(BlockSize-1 downto 0);
     signal data_array : memory_type := (others => (others => '0'));
     
     signal current_data : std_logic_vector(BlockSize-1 downto 0);
+    signal current_tag : std_logic_vector(ValidBitIndex downto 0);
+    
+    signal current_index : Integer := 0;
 begin
 
-    tag <= addressFromCPU(addressBits-1 downto (addressBits-tagSize));
-    index <= addressFromCPU((addressBits-1-tagSize) downto (addressBits-tagSize - indexSize));
+    tag <= addressFromCPU(31 downto 14);
+
+    --tag <= addressFromCPU(addressFromCPU'Length-1 downto (addressFromCPU'Length - tagSize));
+    index <= addressFromCPU(13 downto 4);
     offset <= addressFromCPU(offsetSize-1 downto 2); --Maybe make this 2 generic, and add byte offset support?
+    --current_index <= to_integer(unsigned(index));
 
     current_data <= data_array(to_integer(unsigned(index)));
-
+    current_tag <= tag_array(to_integer(unsigned(index)));
+    
+    
+    
     Mux : FourToOneMux
     Generic Map(BlockSize => BlockSize, WordSize => WordSize)
     Port Map(i0 => current_data, sel => offset, Y => dataToCPU);
+    
+--    Demux : OneToFourDemux
+--    Port map(   i0 => dataFromCPU, sel => offset, 
+--                Y0 => data_array(to_integer(unsigned(index)))(127 downto 96), Y1 => current_data(95 downto 64),
+--                Y2 => current_data(63 downto 32), Y3 => current_data(31 downto 0)); 
 
     --State register part
     process(clk)
@@ -129,8 +151,8 @@ begin
             when CompareTag =>
                 --If valid bit in index is equal to 1 (IE VALID) and TAG Matches:
                 --HIT!!!
-                if((tag_array(to_integer(unsigned(index)))(ValidBitIndex) = '1') and
-                    (tag_array(to_integer(unsigned(index)))(tagSize-1 downto 0) = tag)) then
+                if(current_tag(ValidBitIndex) = '1') and
+                    (current_tag(tagSize-1 downto 0) = tag) then
                     
                     --If its a hit, it does not matter whether its a read or write, we are going back either way
                     state_next <= idle;
@@ -138,7 +160,7 @@ begin
                 --MISS
                 else                        
                     --If cache miss and old block is clean, goto allocate
-                    if(tag_array(to_integer(unsigned(index)))(DirtyBitIndex) = '0') then
+                    if(current_tag(DirtyBitIndex) = '0') then
                         state_next <= Allocate;
                     --If dirty bit, we have to write back!!
                     else
@@ -171,13 +193,18 @@ begin
     
     
     --Output logic;
-    process(state, state_next, OperationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory) is
+    process(state, state_next, readOrWriteFromCPU, OperationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory, index, tag) is
     begin
         case state is
             when Idle =>
             --Let cpu know we are idle, and let Memory know that there is no current operation.
-                operationToMemory <= '0';
-                readyToCPU <= '1';
+                if(state_next = CompareTag) then
+                    readyToCPU <= '0';
+                else
+                    operationToMemory <= '0';
+                    readyToCPU <= '1';
+                end if;
+                
             when CompareTag =>
                 --Tell the processor that we are ready if we are on our way back to idle.
                 if(state_next = idle) then
@@ -196,29 +223,44 @@ begin
                                 data_array(to_integer(unsigned(index)))(95 downto 64) <= dataFromCPU;
                             when "10" =>
                                 data_array(to_integer(unsigned(index)))(63 downto 32) <= dataFromCPU;
-                            when "11" =>
+                            when others =>
                                 data_array(to_integer(unsigned(index)))(31 downto 0) <= dataFromCPU;
                         end case;
                     end if;
                     readyToCPU <= '1';
                 --If not, it means we are moving to either writeBack or Allocate:
-                else
+                elsif(state_next = Allocate) then
                     --Tell memory that an operation is underway:
                     operationToMemory <= '1';
                     if(readOrWriteFromCPU = '1') then
-                        tag_array(to_integer(unsigned(index))) <= "11" & tag;
+                        tag_array(to_integer(unsigned(index))) <= "11" & tag;                        
                     end if;
                     --Handle read or write stuff
+                    addressToMemory <= addressFromCPU;
+                    readOrWriteToMemory <= '0';
                     
+                --Means we are going to writeBackNext;
+                elsif(state_next = WriteBack) then
+                    addressToMemory <= tag_array(to_integer(unsigned(index)))(17 downto 0) & index & "0000";
+                    readOrWriteToMemory <= '1';
+                    operationToMemory <= '1';
+                    tag_array(to_integer(unsigned(index))) <= "10" & tag;
+                else
+                    null;
                 end if;
                     
                     
                 
                 --If not return stall = '1', do stuff?
             when Allocate =>
-                --Stall = 1???
+                if(readyFromMemory = '1') then
+                    tag_array(to_integer(unsigned(index))) <= '1' & '0' & tag;
+                    data_array(to_integer(unsigned(index))) <= dataFromMemory;
+                end if;
                 
             when WriteBack =>
+                --if(readyFromMemory = '1'
+                    
                 --Stall = 1?
             
         end case;

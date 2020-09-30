@@ -1,0 +1,10 @@
+# compile vhdl design source files
+vhdl xil_defaultlib  \
+"../../../../DDV3101Project_CacheControlFSM.srcs/sources_1/new/Cache.vhd" \
+"../../../../DDV3101Project_CacheControlFSM.srcs/sources_1/new/FourToOneMux.vhd" \
+"../../../../DDV3101Project_CacheControlFSM.srcs/sources_1/new/Memory.vhd" \
+"../../../../DDV3101Project_CacheControlFSM.srcs/sources_1/new/TopBlock.vhd" \
+"../../../../DDV3101Project_CacheControlFSM.srcs/sim_1/new/TopBlock_tb.vhd" \
+
+# Do not sort compile order
+nosort

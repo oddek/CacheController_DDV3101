@@ -33,9 +33,6 @@ use IEEE.Math_real.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-
-
-
 entity TopBlock is
     Port (  clk :       in STD_LOGIC := '1';
             ready : out STD_LOGIC := '1';
@@ -45,6 +42,8 @@ entity TopBlock is
             wData :     in STD_LOGIC_VECTOR (31 downto 0):= (others => '0');--(Word-1 downto 0);
             readOrWrite :      in STD_LOGIC);
 end TopBlock;
+
+
 architecture Behavioral of TopBlock is
     --Constants
     constant Byte : Integer := 8; --(2^3)
@@ -59,28 +58,21 @@ architecture Behavioral of TopBlock is
     constant N : Integer := Integer(log2(Real(CacheBlockSize))); --10
     constant M : Integer := Integer(log2(Real(BlockSize/Word))); -- 2
     
-    constant DataBits : Integer := 8;
-    constant indexSize : Integer := N;
-    constant tagSize : Integer := 32 - (n + m + 2);  --
+    constant indexSize : Integer := N; -- 10
+    constant tagSize : Integer := 18;--32 - (n + m + 2);  --18
     
-    constant offsetSize : Integer := 2;
-    
---    constant offsetSize : Integer := 2;
-    --Internal Signals
---    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0);
---    signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0);
---    signal offset : STD_LOGIC_VECTOR(offsetSize-1 downto 0);
+    constant offsetSize : Integer := 4;
     
     --Output from cacheController
-    signal cache2MemReadOrWrite : STD_LOGIC;
-    signal cache2MemAddress : STD_LOGIC_VECTOR(addressBits-1 downto 0);
-    signal cache2MemData : STD_LOGIC_VECTOR(BlockSize -1 downto 0);
-    signal cache2MemOperation : STD_LOGIC;
+    signal cache2MemReadOrWrite : STD_LOGIC := '0';
+    signal cache2MemAddress : STD_LOGIC_VECTOR(addressBits-1 downto 0) := (others => '0');
+    signal cache2MemData : STD_LOGIC_VECTOR(BlockSize -1 downto 0) := (others => '0');
+    signal cache2MemOperation : STD_LOGIC := '0';
     
     --Output from Memory
-    signal mem2CacheReady : STD_LOGIC;
+    signal mem2CacheReady : STD_LOGIC := '0';
     --Må være 128
-    signal mem2CacheData : STD_LOGIC_VECTOR(BlockSize-1 downto 0);
+    signal mem2CacheData : STD_LOGIC_VECTOR(BlockSize-1 downto 0) := (others => '0');
     
     --Components
     Component Memory
@@ -121,54 +113,8 @@ architecture Behavioral of TopBlock is
                readOrWriteToMemory: out STD_LOGIC := '0';
                readyFromMemory :    in STD_LOGIC);
     end Component Cache; 
---    Component CacheController
---        Generic(    tagSize : Integer := tagSize;
---                    indexSize : Integer := indexSize);
---        Port ( clk :       in STD_LOGIC;
---               tag : in STD_LOGIC_VECTOR (tagSize-1 downto 0);
---               index : in STD_LOGIC_VECTOR (indexSize-1 downto 0);
---               read : in STD_LOGIC;
---               write : in STD_LOGIC;
---               flush : in STD_LOGIC;
---               stall : out STD_LOGIC;
---               refill : out STD_LOGIC;
---               update : out STD_LOGIC;
---               memRead : out STD_LOGIC;
---               memWrite : out STD_LOGIC;
---               memReady : in STD_LOGIC);
---    end Component CacheController;   
-    
---    Component CPU
---        Generic(    addressBits : Integer := 8;
---                    dataBits : Integer := 8); 
---        Port (  stall :     in STD_LOGIC;
---                rData :     in STD_LOGIC_VECTOR (dataBits-1 downto 0);
---                address :   out STD_LOGIC_VECTOR (addressBits-1 downto 0);
---                wData :     out STD_LOGIC_VECTOR (dataBits-1 downto 0);
---                read :      out STD_LOGIC;
---                write :     out STD_LOGIC;
---                flush :     out STD_LOGIC);
---    end Component CPU;
+
 begin
-
-
---    CPUInst : CPU
---    Generic Map(addressBits => AddressBits, dataBits => DataBits)
---    Port Map(stall => TopBlock.Stall, rData => TopBlock.rData, address => TopBlock.address, wData => TopBlock.wData, read => TopBlock.read, write => TopBlock.write, flush => TopBlock.flush);
-
---    CacheControllerInst : CacheController
---    Port Map(   clk => clk,
---                tag => tag, 
---                index => index, 
---                read => read, 
---                write => write, 
---                flush => flush, 
---                stall => stall, 
---                refill => cacheControl2CacheRefill,
---                update => cachecontrol2CacheUpdate,
---                memRead => cacheControl2MemRead,
---                memWrite => cacheControl2MemWrite,
---                memReady => Mem2CacheControlReady);
 
     CacheInst : Cache
     Generic Map(addressBits => AddressBits, BlockSize => BlockSize, WordSize => Word, indexSize => indexSize, offsetSize => offsetSize, tagSize => tagSize)
