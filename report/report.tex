@@ -17,6 +17,8 @@
 \usepackage{gensymb}
 \usepackage{amsmath}
 
+\usepackage{caption}
+\usepackage{subcaption}
 \definecolor{Black}{rgb}{0.0, 0.0, 0.0}
 
 %Definer kode
@@ -61,7 +63,7 @@ texcl=true,
 \renewcommand{\figurename}{Figure}
 \begin{document}
 \author{Kent Odde}
-\title{Title}
+\title{DDV3101 \\Cache Controller}
 
 \maketitle
 \thispagestyle{empty}
@@ -80,7 +82,7 @@ This is my submission for the semester project in DDV3101, fall 2020.
 
 %Innholdsfortegnelse
 \section{Introduction}
-A cache controller is what administrates the cache memory. This assigment consists of implementing the cacache controller design which is specified on page 462, in \textit{Computer organization \& Design: The Hardware/Software Interface}
+A cache controller is what administrates the cache memory. This assigment consists of implementing the cacache controller design which is specified on page 462, in \textit{Computer organization \& Design: The Hardware/Software Interface}\cite{BOOK}
 
 %Oppgaven
 \section{Specifications}
@@ -96,15 +98,15 @@ The details of the design will become clear throughout the \textit{Implementatio
 
 A direct mapped cache controller means that in order to find the cache address for a memory address, we use this formula:
 
-\begin{equation}
+\begin{equation*}
   CacheAddress = (MemoryAddress) \bmod (Number\_of\_blocks\_in\_cache)
-\end{equation}
+\end{equation*}
 
 In other words, all the memory addresses which end in the same bits, will be mapped to the same cache address. This reduces overhead and lets us avoid expencive memory translation schemes. In order to know what which actual memory address we have in our cache currently, we check the most significant bits of the address, against the tag in stored in the cache at the index we need.
 
-The fact that our cache is using writeback, means that when the CPU wants to write something to memory, we immediately only write it to the cache. The new values will not be written back to memory, until another memory address needs to take the current occupants place in the cache. This is a more efficient approach than for instance write-through, where we write back to both the memory and the cache every single time. 
+The fact that our cache is using writeback, means that when the CPU wants to write something to memory, we only write it to the cache. The new values will not be written back to memory until another memory address needs to take the current occupants place in the cache. This is a more efficient approach than for instance write-through, where we write back to both the memory and the cache every single time. 
 
-The cache is designed as a finite state machine, which can be seen in figure \ref{FSB}
+The cache controller is designed as a finite state machine, which can be seen in figure \ref{FSB}
 
 
 \begin{figure}[H]
@@ -128,7 +130,7 @@ Lets have a look at how this will work. The CPU will send a 32 bit address to th
 
 %Implementation
 \section{Implementation}
-
+\subsection{Structure}
 In order to implement this in VHDL, the cache and the memory will be separate blocks. The ram block will consist of an array to simulate the memory. The cache will consist of one array to store the tags, dirty bits and valid bits, and another array for storing the actual data. 
 
 The CPU in our case will be the testbench, which will request different memory addresses, in order to test all the different outcomes of a memory access. 
@@ -142,14 +144,196 @@ The more detailed specifications, can be seen in figure \ref{DETAILED}.
   \label{DETAILED}
  \end{figure}
 
+\subsection{The Code}
+
+The source code can be seen in the appendices, and is commented quite richly. 
+
+The RAM and the top block is quite straightforward, however, the cache controller's FSB is quite a mess. The code was written before the professor's lecture on finite state machines, which means that the code is not structered as well as it should have been. However, since it took a thirteen hour debugging session to get it working, I really didn't want to try and refactor the code. 
+
+The top block has a lot of constants, which set the specifications, the plan was to write the code completely generic, so that a change in a constant variable, would change the specifications for the entire system. However, a lot of bugs within Vivado emerged when doing this on a large scale, and to get rid of the errors I had to hardcode a lot of the values throughout the program. 
+
+Because the address size is 32 bits, I tried implementing the memory as an array of 2**32 in size. However, as can be seen in figure \ref{ERROR}, this was not possible.
+\begin{figure}[H]
+ \centering
+  \includegraphics[width=300pt]{img/arraySizeError.png}
+ \caption{Large array error}
+  \label{ERROR}
+ \end{figure}
+
+Luckily it was possible to create arrays of 2**16, so that i would be able to at least circle around the cache once, and test for dirty misses. 
+
+
+\subsection{Schematic}
+The generated schematic for the solution can be seen in figure \ref{SCHEMATIC}
+
+\begin{figure}[H]
+ \centering
+  \includegraphics[width=400pt]{img/schematic211020.png}
+ \caption{Schematic generated by Vivado}
+  \label{SCHEMATIC}
+ \end{figure}
+
+Because of the scale of the implementation, this is the best schematic i can produce. Any attempt at trying opening the memory or cache in the elaboration design results in a software crash. 
+
+\subsection{Testbench}
+
+In order to test all the cases, we need 8 operations from the CPU to the cache controller.
+
+The eight operations consists of the following:
+\begin{itemize}
+  \item{Read from address 0, block 0. Should result in a miss}
+  \item{Read from address 0, block 0. Should result in a hit}
+  \item{Write to address 1, block 0. Should result in a miss}
+  \item{Read from address 1, block 0. Should result in a hit}
+  \item{Read from address 2, block 0. Should result in a miss}
+  \item{Read from address 1024, block 0. Should result in a miss}
+  \item{Read from address 1025, block 1. Should result in a \textbf{DIRTY} miss}
+  \item{Write to address 1, block 1. Should result in a miss}
+\end{itemize}
+
+All of the data in the cache have been initialized to zeroes, and the data in RAM have been initialized to all ones in order to see what is going on. 
+
+
+In this initial state, we can see that the cache is completely empty
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{img/tag0.png}
+  \caption{Tag array}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{img/data0.png}
+  \caption{Data array}
+\end{subfigure}
+\caption{Cache initial state}
+\end{figure}
+
+
+In the figure below, we have had our first operation, which inevitabely was a miss, and we can see that index zero in the cache has been filled. The first bit in the tag-array is the valid bit.
+
+The second operation is a hit on the same address, so it looks the exact same afterwards.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{img/tag1.png}
+  \caption{Tag array}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{img/data1.png}
+  \caption{Data array}
+\end{subfigure}
+\caption{After first operation}
+\end{figure}
+
+
+
+
+
+After the third operation, which was a clean write miss, we can see that index 1 in the cache has been read from memory, the first block has been written to, and the valid and dirty bit is active. 
+
+Since the fourth operation is a hit, the cache looks the same afterwards.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{img/tag2.png}
+  \caption{Tag array}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{img/data2.png}
+  \caption{Data array}
+\end{subfigure}
+\caption{Cache after third operation}
+\end{figure}
+
+
+The fifth operation is a read from address 2, block 0, which results in a miss. Index 2 has in the figure below been filled with the contents of the RAM at address 2.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{img/tag3.png}
+  \caption{Tag array}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{img/data3.png}
+  \caption{Data array}
+\end{subfigure}
+\caption{After fifth operation}
+\end{figure}
+
+
+In the sixth opertion we read from address 1024. This is a miss, which will throw out address 0 from the cache. In the tag-array, we can see that in index 0, the tags least significant bit is now higher than the others. Which is correct.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{img/tag4.png}
+  \caption{Tag array}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{img/data4.png}
+  \caption{Data array}
+\end{subfigure}
+\caption{After the sixth operation}
+\end{figure}
+
+The seventh operation, which is a dirty miss, will have to write back to memory before loading in from memory address 1025. In the figure below we can see how the contents of both the tag-array and data-array have changed at index 1.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{img/tag5.png}
+  \caption{Tag array}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{img/data5.png}
+  \caption{Data array}
+\end{subfigure}
+\caption{After the seventh operation}
+\end{figure}
+
+Finally in the last operation, we write to address 1, block 1, which is a miss. As we already have written to address one, block 0, we can see the two first blocks of index 1 in the cache have different contents than the rest. We can also se the dirty and valid bit being active. 
+\begin{figure}[H]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{img/tag6.png}
+  \caption{Tag array}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{img/data6.png}
+  \caption{Data array}
+\end{subfigure}
+\caption{After the eight operation}
+\end{figure}
+
+
+If we have a look at the testbench, we can se how the operations are much shorter on cache hits, then they are on misses:
+
+\begin{figure}[H]
+ \centering
+  \includegraphics[width=400pt]{img/testbench1.png}
+ \caption{Testbench}
+  \label{TESTBENCH1}
+ \end{figure}
 
 
 
 %Konklusjon
 \section{Conclusion}
+This was a very fun, yet quite difficult exercise, with a high learning outcome. It took many readings of chapter 5 in the book, in order to understand caches well enough, and implementing the cache controller was very challenging. However, having done this I feel I have an understanding of cache memory, I wouldn't have had otherwise. 
 
-
-
+As mentioned, the code is by no means perfect, so please reach out to me if there is something unclear in the code or in this report. 
 
 %Vedlegg
 \section{Appendices}
@@ -423,6 +607,216 @@ end Behavioral;
 
 \subsection{Cache Controller}
 \begin{lstlisting}
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+use IEEE.NUMERIC_STD.ALL;
+
+entity Cache is
+    Generic(    addressBits : Integer;
+                BlockSize : Integer;
+                WordSize : Integer;
+                offsetSize : Integer;
+                indexSize : Integer;
+                tagSize : Integer); 
+                  
+        Port ( clk :                in STD_LOGIC;
+               readOrWriteFromCPU : in STD_LOGIC;
+               OperationFromCPU :   in STD_LOGIC;
+               addressFromCPU :     in STD_LOGIC_VECTOR(addressBits-1 downto 0);
+               dataToCPU :          out STD_LOGIC_VECTOR (WordSize-1 downto 0);
+               dataFromCPU :        in STD_LOGIC_VECTOR (WordSize-1 downto 0);
+               readyToCPU :         out STD_LOGIC;
+               
+               --Disse må være 128 bit
+               dataFromMemory :     in STD_LOGIC_VECTOR(BlockSize-1 downto 0);
+               dataToMemory :       out STD_LOGIC_VECTOR(BlockSize-1 downto 0);
+               addressToMemory :    out STD_LOGIC_VECTOR(addressBits-1 downto 0);
+               operationToMemory :  out STD_LOGIC;
+               readOrWriteToMemory: out STD_LOGIC := '0';
+               readyFromMemory :      in STD_LOGIC);
+end Cache;
+
+architecture Behavioral of Cache is
+
+    Component FourToOneMux
+    Generic (BlockSize : Integer;
+                WordSize : Integer);
+    Port ( i0 : in STD_LOGIC_VECTOR (BlockSize-1 downto 0);
+           sel : in STD_LOGIC_VECTOR (1 downto 0);
+           Y : out STD_LOGIC_VECTOR (WordSize-1 downto 0));
+    end Component FourToOneMux;
+
+    constant ValidBitIndex : Integer := (tagSize - 1 + 2);
+    constant DirtyBitIndex : Integer := tagSize - 1 + 1;
+    
+    --Parse input address:
+    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0) := (others => '0');
+    signal index : STD_LOGIC_VECTOR(9 downto 0) := (others => '0');
+    signal byteOffset : STD_LOGIC_VECTOR(1 downto 0) := (others => '0');
+    
+    type state_type is (Idle, CompareTag, Allocate, WriteBack);
+    signal state : state_type := Idle;
+    signal state_next : state_type := Idle;
+    
+    --ARRAY OF TAGS 
+    --VALID BIT, DIRTY BIT and the TAG (LSB);
+    type tag_array_type is array(0 to (2**index'length)-1 ) of std_logic_vector(ValidBitIndex downto 0);
+    signal tag_array : tag_array_type := (others => (others => '0'));
+
+    --ARRAY OF DATA
+    type memory_type is array(0 to 1023) of std_logic_vector(BlockSize-1 downto 0);
+    signal data_array : memory_type := (others => (others => '0'));
+    
+    signal current_data : std_logic_vector(BlockSize-1 downto 0);
+begin
+    --Update all necessary stuff
+    tag <= addressFromCPU(31 downto 14);
+    index <= addressFromCPU(13 downto 4);
+    byteOffset <= addressFromCPU(3 downto 2);
+    current_data <= data_array(to_integer(unsigned(index)));
+    
+    --Setup mux for writing a word from CPU to cache
+    Mux : FourToOneMux
+    Generic Map(BlockSize => BlockSize, WordSize => WordSize)
+    Port Map(i0 => current_data, sel => byteOffset, Y => dataToCPU);
+    
+    --State register part
+    process(clk, addressFromCPU)
+    begin
+        if(rising_edge(clk)) then
+            state <= state_next;
+        end if;
+    end process;
+    
+    -- Next state Logic
+    process(state, index, tag, tag_array, operationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory)
+    begin
+        case state is
+            when Idle =>
+                --Checks for an operation from CPU, if not stay in current state
+                if (OperationFromCPU = '1') then
+                    state_next <= compareTag;
+                else
+                    state_next <= state;
+                end if;
+                
+                
+            when CompareTag =>
+                --If valid bit in index is equal to 1 (IE VALID) and TAG Matches:
+                --HIT!!!
+                if(tag_array(to_integer(unsigned(index)))(ValidBitIndex) = '1') and
+                    (tag_array(to_integer(unsigned(index)))(tagSize-1 downto 0) = tag) then
+                    
+                    --If its a hit, it does not matter whether its a read or write, we are going back either way
+                    state_next <= idle;
+                        
+                --MISS
+                else                        
+                    --If cache miss and old block is clean, goto allocate
+                    if(tag_array(to_integer(unsigned(index)))(DirtyBitIndex) = '0') then
+                        state_next <= Allocate;
+                        
+                    --If dirty bit, we have to write back!!
+                    else
+                        state_next <= writeBack;
+                    end if;
+                end if;
+                
+                
+            when Allocate =>
+                --If Memory ready, return to compare tag
+                if(readyFromMemory = '1') then
+                    state_next <= CompareTag;
+                    
+                --Memory not ready, keep waiting
+                else
+                    state_next <= state;
+                end if;
+                
+                
+            when WriteBack =>
+                --If memory ready, goto to allocate
+                if(readyFromMemory = '1') then
+                    state_next <= Allocate;
+                --If not ready, keep waiting
+                else
+                    state_next <= state;
+                end if;
+        end case;
+    end process;
+    
+    
+    --Output logic;
+    process(state, state_next, readOrWriteFromCPU, OperationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory, index, tag, byteOffset) is
+    begin
+        case state is
+            when Idle =>
+            --Let cpu know we are idle, and let memory know that there is no current operation.
+                if(state_next = CompareTag) then
+                    readyToCPU <= '0';
+                else
+                    operationToMemory <= '0';
+                    readyToCPU <= '1';
+                end if;
+                
+            when CompareTag =>
+                if(state_next = idle) then
+                    --Checking if we were writing
+                    if(readOrWriteFromCPU = '1') then
+                        --Set Dirty Bit, if we were writing
+                        tag_array(to_integer(unsigned(index)))(DirtyBitIndex) <= '1'; 
+                        --The book says that we also have to set the tag and valid bit, but this is due to some strange implementation i believe. In this solution I don't think this is necessary.
+                        
+                        --Write the data from CPU into cache
+                        case byteOffset is
+                            when "00" =>
+                                data_array(to_integer(unsigned(index)))(127 downto 96) <= dataFromCPU;
+                            when "01" =>
+                                data_array(to_integer(unsigned(index)))(95 downto 64) <= dataFromCPU;
+                            when "10" =>
+                                data_array(to_integer(unsigned(index)))(63 downto 32) <= dataFromCPU;
+                            when others =>
+                                data_array(to_integer(unsigned(index)))(31 downto 0) <= dataFromCPU;
+                        end case;
+                    end if;
+                    --Tell the processor that we are ready if we are on our way back to idle.
+                    readyToCPU <= '1';
+                    
+                --If next state is allocate, we need to let the memory know what we need
+                elsif(state_next = Allocate) then
+                                          
+                    addressToMemory <= addressFromCPU;
+                    readOrWriteToMemory <= '0';
+                    --Tell memory that an operation is underway:
+                    operationToMemory <= '1';
+                    
+                --If next state is writeBack, we need to give the memory the stuff it needs
+                elsif(state_next = WriteBack) then
+                    addressToMemory <= tag_array(to_integer(unsigned(index)))(17 downto 0) & index & "0000";
+                    dataToMemory <= data_array(to_integer(unsigned(index)));
+                    readOrWriteToMemory <= '1';
+                    operationToMemory <= '1';
+                    --We also have to set the dirtybit to 0, so that we can write to the cache location after the writeback and allocation
+                    tag_array(to_integer(unsigned(index)))(DirtyBitIndex) <= '0';
+                else
+                    --Should never get here, but for some reason, sometimes we do.
+                    null;
+                end if;
+                    
+            when Allocate =>
+                if(readyFromMemory = '1') then
+                    --When the memory has put the necessary data on the bus, we can read it, and store it in cache.
+                    tag_array(to_integer(unsigned(index))) <= '1' & '0' & tag;
+                    data_array(to_integer(unsigned(index))) <= dataFromMemory;
+                end if;
+                
+            --Nothing to be outputed in this state. 
+            when WriteBack =>
+                null;
+        end case;
+   end process;
+end Behavioral;
 
 \end{lstlisting}
 
