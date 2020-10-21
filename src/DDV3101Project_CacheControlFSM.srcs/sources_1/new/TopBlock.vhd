@@ -112,7 +112,6 @@ architecture Behavioral of TopBlock is
     end Component Cache; 
 
 begin
-
     CacheInst : Cache
     Generic Map(addressBits => AddressBits, BlockSize => BlockSize, WordSize => Word, indexSize => indexSize, offsetSize => offsetSize, tagSize => tagSize)
     Port Map(   clk => clk,

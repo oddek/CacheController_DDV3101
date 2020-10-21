@@ -41,7 +41,8 @@ architecture Behavioral of TopBlock_tb is
     signal rData, wData, addr : STD_LOGIC_VECTOR(31 downto 0);
 
     constant clk_period : time := 10 ns;
-
+    --Define addressess for a more readable testbench
+    --First digit refers to the address in decimal, and the second digit means which block we want
     signal address0_0 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(0, 28)) & "0000";
     signal address1_0 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(1, 28)) & "0000";
     signal address1_1 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(1, 28)) & "0100";
@@ -62,7 +63,7 @@ architecture Behavioral of TopBlock_tb is
     signal address1028_0 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(1028, 28)) & "0000";
     signal address1029_0 : std_logic_vector(31 downto 0) := std_logic_vector(to_unsigned(1029, 28)) & "0000";
 
-    constant writeData1 : std_logic_vector(31 downto 0) := "00001111000011110000111100001111";
+    constant writeData : std_logic_vector(31 downto 0) := "00001111000011110000111100001111";
 
     component TopBlock is
     Port (  clk :       in STD_LOGIC := '1';
@@ -115,9 +116,9 @@ begin
         
         wait for clk_period*4;
         
-    --Write 1 to addr1_0: MISS, NOT DIRTY
+    --Write to addr1_0: MISS, NOT DIRTY
         addr <= address1_0;
-        wData <= writeData1;
+        wData <= writeData;
         
         readOrWrite <= '1';
         operation <= '1';
@@ -163,21 +164,16 @@ begin
         wait for clk_period*4;
         
         
-    --Write 1 to addr1_1: MISS, NOT DIRTY
+    --Write to addr1_1: MISS, NOT DIRTY
         addr <= address1_1;
-        wData <= writeData1;
+        wData <= writeData;
         readOrWrite <= '1';
         operation <= '1';
         wait until ready = '1';
         operation <= '0';
         
         wait for clk_period*4;
-    
         
-        
-
-        
-    
         wait;
     end process;
 

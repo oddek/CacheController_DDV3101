@@ -18,7 +18,6 @@
 -- 
 ----------------------------------------------------------------------------------
 
-
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
@@ -66,23 +65,22 @@ architecture Behavioral of Cache is
            Y : out STD_LOGIC_VECTOR (WordSize-1 downto 0));
     end Component FourToOneMux;
 
-    Component OneToFourDemux
-        Port ( i0 : in STD_LOGIC_VECTOR (31 downto 0);
-           sel : in STD_LOGIC_VECTOR (1 downto 0);
-           Y0 : out STD_LOGIC_VECTOR (31 downto 0);
-           Y1 : out STD_LOGIC_VECTOR (31 downto 0);
-           Y2 : out STD_LOGIC_VECTOR (31 downto 0);
-           Y3 : out STD_LOGIC_VECTOR (31 downto 0));
-    end Component OneToFourDemux;
-
+--    Component OneToFourDemux
+--        Port ( i0 : in STD_LOGIC_VECTOR (31 downto 0);
+--           sel : in STD_LOGIC_VECTOR (1 downto 0);
+--           Y0 : out STD_LOGIC_VECTOR (31 downto 0);
+--           Y1 : out STD_LOGIC_VECTOR (31 downto 0);
+--           Y2 : out STD_LOGIC_VECTOR (31 downto 0);
+--           Y3 : out STD_LOGIC_VECTOR (31 downto 0));
+--    end Component OneToFourDemux;
 
     constant ValidBitIndex : Integer := (tagSize - 1 + 2);
     constant DirtyBitIndex : Integer := tagSize - 1 + 1;
     
-    --Divide input address:
-    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0) := (others => '0');-- := addressFromCPU(addressBits-1 downto addressBits-tagSize);
-    signal index : STD_LOGIC_VECTOR(indexSize-1 downto 0) := (others => '0');-- := addressFromCPU(addressBits-1-tagSize downto addressBits-tagSize - indexSize);
-    signal byteOffset : STD_LOGIC_VECTOR(1 downto 0) := (others => '0');-- := addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
+    --Parse input address:
+    signal tag : STD_LOGIC_VECTOR(tagsize-1 downto 0) := (others => '0');
+    signal index : STD_LOGIC_VECTOR(9 downto 0) := (others => '0');
+    signal byteOffset : STD_LOGIC_VECTOR(1 downto 0) := (others => '0');
     
     type state_type is (Idle, CompareTag, Allocate, WriteBack);
     signal state : state_type := Idle;
@@ -102,7 +100,7 @@ begin
     --Update all necessary stuff
     tag <= addressFromCPU(31 downto 14);
     index <= addressFromCPU(13 downto 4);
-    byteOffset <= addressFromCPU(3 downto 2); --Maybe make this 2 generic, and add byte offset support?
+    byteOffset <= addressFromCPU(3 downto 2);
     current_data <= data_array(to_integer(unsigned(index)));
     
     --Setup mux for writing a word from CPU to cache
@@ -178,7 +176,7 @@ begin
     
     
     --Output logic;
-    process(state, state_next, readOrWriteFromCPU, OperationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory, index, tag) is
+    process(state, state_next, readOrWriteFromCPU, OperationFromCPU, addressFromCPU, dataFromCPU, dataFromMemory, readyFromMemory, index, tag, byteOffset) is
     begin
         case state is
             when Idle =>
