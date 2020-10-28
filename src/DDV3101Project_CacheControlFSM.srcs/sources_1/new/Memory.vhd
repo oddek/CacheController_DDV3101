@@ -51,7 +51,6 @@ architecture Behavioral of Memory is
     type memory_type is array(0 to (2**16)-1) of std_logic_vector(127 downto 0);
     signal RAM : memory_type := (others => (others => '1'));
 begin
-    
     process(clk, operation, readOrWrite, addr)
     begin
         if(operation = '1') then

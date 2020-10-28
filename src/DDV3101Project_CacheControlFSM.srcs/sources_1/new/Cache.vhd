@@ -65,15 +65,6 @@ architecture Behavioral of Cache is
            Y : out STD_LOGIC_VECTOR (WordSize-1 downto 0));
     end Component FourToOneMux;
 
---    Component OneToFourDemux
---        Port ( i0 : in STD_LOGIC_VECTOR (31 downto 0);
---           sel : in STD_LOGIC_VECTOR (1 downto 0);
---           Y0 : out STD_LOGIC_VECTOR (31 downto 0);
---           Y1 : out STD_LOGIC_VECTOR (31 downto 0);
---           Y2 : out STD_LOGIC_VECTOR (31 downto 0);
---           Y3 : out STD_LOGIC_VECTOR (31 downto 0));
---    end Component OneToFourDemux;
-
     constant ValidBitIndex : Integer := (tagSize - 1 + 2);
     constant DirtyBitIndex : Integer := tagSize - 1 + 1;
     
@@ -108,7 +99,6 @@ begin
     Generic Map(BlockSize => BlockSize, WordSize => WordSize)
     Port Map(i0 => current_data, sel => byteOffset, Y => dataToCPU);
     
-
     --State register part
     process(clk, addressFromCPU)
     begin
@@ -197,7 +187,6 @@ begin
                         --The book says that we also have to set the tag and valid bit, but this is due to some strange implementation i believe. In this solution I don't think this is necessary.
                         
                         --Write the data from CPU into cache
-                        --Should really be generalized or put into a separate function or component
                         case byteOffset is
                             when "00" =>
                                 data_array(to_integer(unsigned(index)))(127 downto 96) <= dataFromCPU;
