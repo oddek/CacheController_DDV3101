@@ -102,7 +102,7 @@ A direct mapped cache controller means that in order to find the cache address f
   CacheAddress = (MemoryAddress) \bmod (Number\_of\_blocks\_in\_cache)
 \end{equation*}
 
-In other words, all the memory addresses which end in the same bits, will be mapped to the same cache address. This reduces overhead and lets us avoid expensive memory translation schemes. In order to know what which actual memory address we have in our cache currently, we check the most significant bits of the address, against the tag in stored in the cache at the index we need.
+In other words, all the memory addresses which end in the same bits, will be mapped to the same cache address. This reduces overhead and lets us avoid expensive memory translation schemes. In order to know which actual memory address we have in our cache currently, we check the most significant bits of the address, against the tag stored in the cache at the index we need.
 
 The fact that our cache is using writeback, means that when the CPU wants to write something to memory, we only write it to the cache. The new values will not be written back to memory until another memory address needs to take the current occupants place in the cache. This is a more efficient approach than for instance write-through, where we write back to both the memory and the cache every single time.
 
